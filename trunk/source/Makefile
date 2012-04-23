@@ -20,8 +20,9 @@ endif
 # SOURCES is a list of directories containing source code
 # INCLUDES is a list of directories containing extra header files
 #---------------------------------------------------------------------------------
-BUILD           ?=      build 
+BUILD           ?=      wii_release 
 SOURCES         :=      .
+LIBDIR          :=      ../lib
 
 #---------------------------------------------------------------------------------
 # options for code generation
