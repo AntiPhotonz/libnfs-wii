@@ -90,12 +90,12 @@ clean:
 all: $(EXT2BIN)
 
 install:
-	cp nfs.h $(DEVKITPRO)/libogc/include
+	cp ../include/nfs.h $(DEVKITPRO)/libogc/include
 	cp ../lib/wii/libnfs.a $(DEVKITPRO)/libogc/lib/wii
 	cp ../lib/cube/libnfs.a $(DEVKITPRO)/libogc/lib/cube
 
 wii-install:
-	cp nfs.h $(DEVKITPRO)/libogc/include
+	cp ../include/nfs.h $(DEVKITPRO)/libogc/include
 	cp ../lib/wii/libnfs.a $(DEVKITPRO)/libogc/lib/wii
 
 #---------------------------------------------------------------------------------

@@ -34,7 +34,7 @@
 /*
 Calls the mount service to mount the specified directory at the specified port
 */
-NFSMOUNT * rpc_mount(const char *mountdir);
+int32_t rpc_mount(NFSMOUNT *nfsmount, const char *mountdir);
 
 /*
 Calls the mount program with the unmount procedure to unmount the mounted directory

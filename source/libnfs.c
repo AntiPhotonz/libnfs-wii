@@ -89,13 +89,17 @@ bool nfsMount(const char *name, const char *ipAddress, const char *mountdir)
 	}
 	memset(devops, 0, struclen);
 
-	udp_init(ipAddress, _nfs_clientport++);
+        nfsmount = _NFS_mem_allocate(sizeof(NFSMOUNT));
+        if (!nfsmount) return NULL;
+	memset(nfsmount, 0, sizeof(NFSMOUNT));
+	nfsmount->socket = -1;
+
+	udp_init(nfsmount, ipAddress, _nfs_clientport++);
 
 	// Use the space allocated at the end of the devoptab struct for storing the name
 	char *nameCopy = (char*)(devops+1);
 
-	nfsmount = rpc_mount(mountdir);
-	if (!nfsmount) goto error;
+	if (rpc_mount(nfsmount, mountdir) != 0) goto error;
 
 	// Add an entry for this device to the devoptab table
 	memcpy (devops, &dotab_nfs, sizeof(dotab_nfs));

@@ -31,6 +31,7 @@
 #include <sys/iosupport.h>
 #include <sys/stat.h>
 #include <gccore.h>
+#include <network.h>
 
 typedef struct {
 	int len;
@@ -60,6 +61,11 @@ typedef struct {
 	uint16_t nfs_port;
 	char *mountdir;
 	mutex_t lock;
+
+	// Socket information
+	uint32_t xid;
+	int32_t socket;
+	struct sockaddr_in remote;
 
 	// FS info
 	int32_t rtmax; // The max size for a READ request

@@ -36,8 +36,6 @@
 
 #define SUCCESS 0
 
-static u32 xid = 1;
-
 int32_t rpc_create_header(NFSMOUNT *nfsmount, int32_t program, int32_t program_version, int32_t procedure, int32_t auth)
 {
 	if (nfsmount->bufferlen < 40) return -1;
@@ -45,11 +43,11 @@ int32_t rpc_create_header(NFSMOUNT *nfsmount, int32_t program, int32_t program_v
 
 	uint32_t *buf = (u32 *) nfsmount->buffer;
 	memset(nfsmount->buffer, 0, nfsmount->bufferlen);
-	buf[0] = xid++;				// Transmission Id
+	buf[0] = ++nfsmount->xid;		// Transmission Id
 	buf[1] = TYPE_CALL;			// Message type (always call)
-	buf[2] = 2;					// RPC Version (make it 2)
+	buf[2] = 2;				// RPC Version (make it 2)
 	buf[3] = program;			// Program to be called
-	buf[4] = program_version;	// Programversion to be called
+	buf[4] = program_version;		// Programversion to be called
 	buf[5] = procedure;			// Procedure to execute on external program
 	buf[6] = auth;				// Authentication type
 
@@ -92,6 +90,14 @@ int32_t rpc_create_header(NFSMOUNT *nfsmount, int32_t program, int32_t program_v
 		buf[offset + 4] = 0;					// Length of verifier header = 0
 		return 60 + length;
 	}
+}
+
+int32_t rpc_is_expected_message(NFSMOUNT *nfsmount)
+{
+	uint32_t xid;
+	rpc_read_int(nfsmount, 0, (int32_t *) &xid);
+
+	return xid == nfsmount->xid ? 1 : 0;
 }
 
 int32_t rpc_parse_header(NFSMOUNT *nfsmount, int32_t *rpc_header_length)

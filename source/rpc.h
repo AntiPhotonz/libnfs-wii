@@ -105,6 +105,7 @@
 #define NFS3ERR_JUKEBOX			10008
 
 int32_t rpc_create_header(NFSMOUNT *nfsmount, int32_t program, int32_t program_version, int32_t procedure, int32_t auth);
+int32_t rpc_is_expected_message(NFSMOUNT *nfsmount);
 int32_t rpc_parse_header(NFSMOUNT *nfsmount, int32_t *rpc_header_length);
 
 int32_t rpc_write_string(NFSMOUNT *nfsmount, int32_t offset, const char *str);
