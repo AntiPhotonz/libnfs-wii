@@ -22,6 +22,7 @@ endif
 #---------------------------------------------------------------------------------
 BUILD           ?=      wii_release 
 SOURCES         :=      .
+INCLUDES	:=	../include
 LIBDIR          :=      ../lib
 
 #---------------------------------------------------------------------------------
@@ -68,7 +69,8 @@ CFILES          :=      $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)
 
 export OFILES   :=      $(CFILES:.c=.o)
 
-export INCLUDE  :=      -I$(CURDIR)/$(BUILD) \
+export INCLUDE  :=      $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+			-I$(CURDIR)/$(BUILD) \
                         -I$(LIBOGC_INC)
 
 export LIBPATHS :=      -L$(LIBOGC_LIB)
