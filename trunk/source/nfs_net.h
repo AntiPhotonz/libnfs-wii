@@ -30,7 +30,7 @@
 
 #include "rpc_mount.h"
 
-int32_t udp_init(const char *server, uint16_t clientport);
+int32_t udp_init(NFSMOUNT *nfsmount, const char *server, uint16_t clientport);
 int32_t udp_sendrecv(NFSMOUNT *nfsmount, uint32_t sendbuflen, uint16_t port);
 
 #endif //_NFS_NET_H

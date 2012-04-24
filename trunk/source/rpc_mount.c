@@ -102,13 +102,8 @@ void rpc_fsinfo(NFSMOUNT *nfsmount)
 	}
 }
 
-NFSMOUNT * rpc_mount(const char *mountdir)
+int32_t rpc_mount(NFSMOUNT *nfsmount, const char *mountdir)
 {
-	NFSMOUNT *nfsmount = _NFS_mem_allocate(sizeof(NFSMOUNT));
-	if (!nfsmount) return NULL;
-
-	memset(nfsmount, 0, sizeof(NFSMOUNT));
-
 	// Initialize the NFS lock
 	_NFS_lock_init(&nfsmount->lock);
 
@@ -138,13 +133,13 @@ NFSMOUNT * rpc_mount(const char *mountdir)
 		rpc_fsinfo(nfsmount);
 
 		_NFS_unlock(&nfsmount->lock);
-		return nfsmount;
+		return 0;
 	}
 error:
 	_NFS_unlock(&nfsmount->lock);
 	_NFS_lock_deinit(&nfsmount->lock);
 	_NFS_mem_free(nfsmount);
-	return NULL; // Negative return value
+	return -1;
 }
 
 void rpc_unmount(NFSMOUNT *nfsmount)

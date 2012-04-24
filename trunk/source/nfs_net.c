@@ -30,75 +30,82 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include "structs.h"
 #include "nfs_net.h"
+#include "rpc.h"
 
 #define IOS_O_NONBLOCK 0x04
 
-static int32_t sock = -1;
-static struct sockaddr_in remote;
 int32_t udp_retries = 2;
 
-int32_t udp_init(const char *server, uint16_t clientport)
+int32_t udp_init(NFSMOUNT *nfsmount, const char *server, uint16_t clientport)
 {
 	struct sockaddr_in client;
 	
-	sock = net_init();
+	int32_t ret = net_init();
 
-	if (sock < 0)
+	if (ret < 0)
 	{
-		return sock;
+		return ret;
 	}
 
 	uint32_t  ip = net_gethostip();
 	struct in_addr addr;
 	addr.s_addr = ip;
 
-	sock = net_socket(AF_INET, SOCK_DGRAM, 0);
-	if (sock < 0)
+	nfsmount->socket = net_socket(AF_INET, SOCK_DGRAM, 0);
+	if (nfsmount->socket < 0)
 	{
 		return -2;
 	}
 
-	memset(&remote, 0, sizeof(struct sockaddr));
-	remote.sin_family = AF_INET;
-	remote.sin_addr.s_addr = inet_addr((char *) server);
+	nfsmount->remote.sin_family = AF_INET;
+	nfsmount->remote.sin_addr.s_addr = inet_addr((char *) server);
 
 	memset(&client, 0, sizeof(struct sockaddr));
 	client.sin_family = AF_INET;
 	client.sin_port = clientport;
 	client.sin_addr.s_addr = INADDR_ANY;
 
-	int32_t ret = net_bind(sock, (struct sockaddr*) &client, sizeof(struct sockaddr));
+	ret = net_bind(nfsmount->socket, (struct sockaddr*) &client, sizeof(struct sockaddr));
 	if (ret < 0)
 	{
 		return -4;
 	}
 
-	int32_t flags = net_fcntl(sock, F_GETFL, 0);
-	net_fcntl(sock, F_SETFL, flags | IOS_O_NONBLOCK); 
+	int32_t flags = net_fcntl(nfsmount->socket, F_GETFL, 0);
+	net_fcntl(nfsmount->socket, F_SETFL, flags | IOS_O_NONBLOCK); 
 
 	return 0;
+}
+
+int32_t udp_connect(NFSMOUNT *nfsmount, uint16_t port)
+{
+	nfsmount->remote.sin_port = port;
+	int32_t ret = net_connect(nfsmount->socket, (struct sockaddr*) &nfsmount->remote, sizeof(struct sockaddr));
+	return ret;
 }
 
 int32_t udp_sendrecv(NFSMOUNT *nfsmount, uint32_t sendbuflen, uint16_t port)
 {
 	int32_t ret = -1;
-	remote.sin_port = port;
+	if (nfsmount->remote.sin_port != port) {
+		// Connect to this server
+		if (udp_connect(nfsmount, port) != 0) {
+			return -1;
+		}
+	}
+
+	struct sockaddr from;
+	memset(&from, 0, sizeof(struct sockaddr));
 
 	uint32_t length = sizeof(struct sockaddr);
-	struct sockaddr from = {0};
-
-	ret = net_connect(sock, (struct sockaddr*)&remote, sizeof(struct sockaddr));
-	if (ret < 0)
-	{
-		return -3;
-	}
 
 	int32_t retr = 0;
 	while (retr < udp_retries)
 	{
 		// We should resend after 500 ms
-		ret = net_sendto(sock, nfsmount->buffer, sendbuflen, 0, (struct sockaddr *) &remote, sizeof(struct sockaddr));
+		ret = net_sendto(nfsmount->socket, nfsmount->buffer, sendbuflen, 0, (struct sockaddr *) &nfsmount->remote, sizeof(struct sockaddr));
 		if (ret < 0)
 		{
 			return -1;
@@ -107,10 +114,13 @@ int32_t udp_sendrecv(NFSMOUNT *nfsmount, uint32_t sendbuflen, uint16_t port)
 		int32_t rec = 0;
 		while (rec < 1000)
 		{
-			ret = net_recvfrom(sock, nfsmount->buffer, nfsmount->bufferlen, 0, (struct sockaddr *) &from, &length);
-			if (ret > 0)
+			ret = net_recvfrom(nfsmount->socket, nfsmount->buffer, nfsmount->bufferlen, 0, (struct sockaddr *) &from, &length);
+			if (ret >= 0)
 			{
-				return ret; // Message received!
+				// Is this the expected message?
+				if (rpc_is_expected_message(nfsmount)) return ret;
+
+				// Xid is invalid, drop this message
 			}
 			usleep(500);
 			rec++;
