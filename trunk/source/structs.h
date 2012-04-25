@@ -52,14 +52,26 @@ typedef struct {
 }  __attribute((packed)) sattr3;
 
 typedef struct {
+	// Buffer for UDP packets
 	void *buffer;
 	uint32_t bufferlen;
+
+	// Handle to the mountpoint
 	fhandle3 handle;
+	
+	// Information for storing current directory
 	fhandle3 curdir;
 	char *curdirname;
+
+	// Mount information
 	uint16_t mount_port;
 	uint16_t nfs_port;
+	uint32_t uid;
+	uint32_t gid;
+	uint32_t readonly;
 	char *mountdir;
+
+	// Mutex for preventing multiple actions
 	mutex_t lock;
 
 	// Socket information

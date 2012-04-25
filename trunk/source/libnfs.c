@@ -32,6 +32,7 @@
 #include <stdio.h>
 
 #include "common.h"
+#include "nfs.h"
 #include "nfs_net.h"
 #include "nfs_dir.h"
 #include "nfs_file.h"
@@ -69,7 +70,7 @@ static const devoptab_t dotab_nfs = {
 	NULL
 };
 
-bool nfsMount(const char *name, const char *ipAddress, const char *mountdir)
+bool nfsMountEx(const char *name, const char *ipAddress, const char *mountdir, uint32_t uid, uint32_t gid, uint32_t readonly)
 {
 	NFSMOUNT *nfsmount = NULL;
 	devoptab_t* devops;
@@ -89,10 +90,14 @@ bool nfsMount(const char *name, const char *ipAddress, const char *mountdir)
 	}
 	memset(devops, 0, struclen);
 
-        nfsmount = _NFS_mem_allocate(sizeof(NFSMOUNT));
-        if (!nfsmount) return NULL;
+	nfsmount = _NFS_mem_allocate(sizeof(NFSMOUNT));
+	if (!nfsmount) return NULL;
 	memset(nfsmount, 0, sizeof(NFSMOUNT));
 	nfsmount->socket = -1;
+
+	nfsmount->uid = uid;
+	nfsmount->gid = gid;
+	nfsmount->readonly = readonly;
 
 	udp_init(nfsmount, ipAddress, _nfs_clientport++);
 
@@ -117,6 +122,10 @@ error:
 	return false;
 finish:
 	return true;
+}
+
+bool nfsMount(const char *name, const char *ipAddress, const char *mountdir) {
+	return nfsMountEx(name, ipAddress, mountdir, 0, 0, NFS_READWRITE);
 }
 
 void nfsUnmount(const char *name)

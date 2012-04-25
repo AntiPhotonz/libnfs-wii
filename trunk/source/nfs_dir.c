@@ -276,29 +276,41 @@ int32_t _NFS_readdirplus_single(NFSMOUNT *nfsmount, NFS_DIR_STATE_STRUCT *state)
 	}
 	offset += 8; // 8 bytes for the verifier data (which is null and has a length 0)
 
+	NFS_DIR_CHILD child;
+
 	while (true) {
 		offset += rpc_read_int(nfsmount, offset, &boolval); // Has entry value
 		if (boolval == 0) {
 			break; // No more values found, we need to check for EOF after this while
 		}
-		state->numchilds++;
 
-		// Increase buffer
-		state->childs = _NFS_mem_reallocate(state->childs, state->numchilds * sizeof(NFS_DIR_CHILD));
-		NFS_DIR_CHILD *child = &state->childs[state->numchilds - 1];
-		memset(child, 0, sizeof(NFS_DIR_CHILD));
+		memset(&child, 0, sizeof(NFS_DIR_CHILD));
 
 		// Read entry
 		offset += 8; // Skip fileid
-		offset += rpc_read_string(nfsmount, offset, &child->name); // Extract the name
+		offset += rpc_read_string(nfsmount, offset, &child.name); // Extract the name
 		offset += rpc_read_long(nfsmount, offset, (long long *) &state->cookie); // Extract the cookie (required for the consequent call, it tells the server where to continue)
 		offset += rpc_read_int(nfsmount, offset, &boolval); // Has attributes
 		if (boolval == 1) {
-			offset += rpc_read_stat(nfsmount, offset, &child->stat); // Read the attributes as stat
+			offset += rpc_read_stat(nfsmount, offset, &child.stat); // Read the attributes as stat
 		}
 		offset += rpc_read_int(nfsmount, offset, &boolval); // Has file handle
 		if (boolval == 1) {
-			offset += rpc_read_fhandle(nfsmount, offset, &child->handle); // Read the file handle
+			offset += rpc_read_fhandle(nfsmount, offset, &child.handle); // Read the file handle
+
+			// I need a handle in order to be able to do something with this child, so I'll add the child here to the list
+			if (state->handle.len == child.handle.len) {
+				if (memcmp(&state->handle, &child.handle, state->handle.len + 4) == 0) {
+					continue; // This handle is the same as the parents handle, ignore it
+				}
+			}
+
+
+			// Increase buffer
+			state->numchilds++;
+			state->childs = _NFS_mem_reallocate(state->childs, state->numchilds * sizeof(NFS_DIR_CHILD));
+			NFS_DIR_CHILD *newChild = &state->childs[state->numchilds - 1];
+			memcpy(newChild, &child, sizeof(NFS_DIR_CHILD));
 		}
 	}
 	offset += rpc_read_int(nfsmount, offset, &state->is_completed); // Read the EOF marker (if 0, then you need subsequent replies)
@@ -379,6 +391,10 @@ int32_t _NFS_mkdir_r (struct _reent *r, const char *path, int32_t mode)
 		r->_errno = ENODEV;
 		return -1;
 	}
+	if (nfsmount->readonly) {
+		r->_errno = EROFS;
+		return -1;
+	}
 
 	_NFS_lock(&nfsmount->lock);
 
@@ -403,7 +419,9 @@ int32_t _NFS_mkdir_r (struct _reent *r, const char *path, int32_t mode)
 	attr.setmode = 1;
 	attr.mode = mode;
 	attr.setuid = 1;
+	attr.uid = nfsmount->uid;
 	attr.setgid = 1;
+	attr.gid = nfsmount->gid;
 	attr.setsize = 0;
 	attr.setatime = TIME_SERVER;
 	attr.setmtime = TIME_SERVER;
