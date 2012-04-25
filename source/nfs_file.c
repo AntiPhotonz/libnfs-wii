@@ -1,3 +1,4 @@
+
 /*
  nfs_file.c for libnfs
 
@@ -78,6 +79,12 @@ int32_t _NFS_open_r (struct _reent *r, void *fileStruct, const char *path, int32
 	NFSMOUNT *nfsmount = _NFS_get_NfsMountFromPath(path);
 	if (nfsmount == NULL) {
 		r->_errno = ENODEV;
+		return -1;
+	}
+
+	// Check if we are doing a Write on readonly partition
+	if (((mode & O_WRONLY) || (mode & O_RDWR)) && nfsmount->readonly) {
+		r->_errno = EROFS;
 		return -1;
 	}
 
@@ -162,9 +169,9 @@ int32_t _NFS_open_r (struct _reent *r, void *fileStruct, const char *path, int32
 		attr.setmode = 1;
 		attr.mode = mode;
 		attr.setuid = 1;
-		attr.uid = 60001; // <-- why?
+		attr.uid = nfsmount->uid;
 		attr.setgid = 1;
-		attr.gid = 60001; // <-- why?
+		attr.gid = nfsmount->gid;
 		attr.setsize = 1;
 		attr.setatime = TIME_SERVER;
 		attr.setmtime = TIME_SERVER;
@@ -258,6 +265,12 @@ int32_t _NFS_close_r (struct _reent *r, int32_t fd)
 ssize_t _NFS_write_r (struct _reent *r, int32_t fd, const char *ptr, size_t len)
 {
 	NFS_FILE_STRUCT *file = (NFS_FILE_STRUCT *) fd;
+
+	if (file == NULL || !file->write) {
+		r->_errno = EBADF;
+		return -1;
+	}
+
 	_NFS_lock(&file->nfsmount->lock);
 	file->shouldcommit = 1;
 
@@ -479,6 +492,10 @@ int32_t _NFS_unlink_r (struct _reent *r, const char *name)
 		r->_errno = ENODEV;
 		return -1;
 	}
+	if (nfsmount->readonly) {
+		r->_errno = EROFS;
+		return -1;
+	}
 
 	_NFS_lock(&nfsmount->lock);
 
@@ -527,6 +544,10 @@ int32_t _NFS_rename_r (struct _reent *r, const char *oldName, const char *newNam
 	NFSMOUNT *nfsmount = _NFS_get_NfsMountFromPath(oldName);
 	if (nfsmount == NULL) {
 		r->_errno = ENODEV;
+		return -1;
+	}
+	if (nfsmount->readonly) {
+		r->_errno = EROFS;
 		return -1;
 	}
 

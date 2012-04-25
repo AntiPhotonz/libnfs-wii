@@ -34,6 +34,9 @@
 extern "C" {
 #endif
 
+#define NFS_READWRITE 0
+#define NFS_READONLY 1
+
 /*
 Mount the network storage specified by the ipAddress of the server, and the mountdirectory 
 for the mountpoint.
@@ -42,6 +45,8 @@ This will also call net_init in order to initialize the network. If you want the
 initiliaze async, make sure you've done so before calling nfsMount.
 */
 extern bool nfsMount(const char *name, const char *ipAddress, const char *mountdir);
+
+extern bool nfsMountEx(const char *name, const char *ipAddress, const char *mountdir, uint32_t uid, uint32_t gid, uint32_t readonly);
 
 /*
 Unmount the remote mountpoint specified by name.

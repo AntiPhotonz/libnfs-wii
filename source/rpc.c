@@ -79,9 +79,9 @@ int32_t rpc_create_header(NFSMOUNT *nfsmount, int32_t program, int32_t program_v
 		
 		unsigned char fillBytes = length % 4 == 0 ? 0 : 4 - (length % 4); // Align the name length to 4 bytes
 
-		int32_t offset = length + fillBytes + 9;
-		buf[offset] = 0;						// UID
-		buf[offset + 1] = 0;					// GID
+		int32_t offset = ((length + fillBytes) / sizeof(u32)) + 10;
+		buf[offset] = nfsmount->uid;				// UID
+		buf[offset + 1] = nfsmount->gid;			// GID
 		buf[offset + 2] = 0;					// Amount of GIDS in the gidlist, followed by (optionally) the gids themselves
 		buf[7] = 8 + length + fillBytes + 12;	// Length of the authentication header
 
