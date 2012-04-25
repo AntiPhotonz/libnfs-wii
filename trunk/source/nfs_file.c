@@ -349,6 +349,11 @@ ssize_t _NFS_read_r (struct _reent *r, int32_t fd, char *ptr, size_t len)
 	// Calculate the best block_len, as specified by the server
 	if (block_len > file->nfsmount->bufferlen) block_len = ((file->nfsmount->bufferlen - 1)/file->nfsmount->rtmult) * file->nfsmount->rtmult;
 
+	#if defined (__wii__)
+	// Fake a block_len for now
+	block_len =	8192 - 128; // This works for the wii, but 8192 bytes seems to be the max message size which is retrieved (128 is the max header for a READ reply)
+	#endif
+
 	int64_t amount_of_data_read = 0;
 	do
 	{

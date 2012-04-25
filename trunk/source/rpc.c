@@ -88,7 +88,7 @@ int32_t rpc_create_header(NFSMOUNT *nfsmount, int32_t program, int32_t program_v
 		// Buffers for Verifier can be empty, buffer is filled until 9 + length + fillBytes + 12, plus UID, GID and GIDlist
 		buf[offset + 3] = 0;					// Verifier is not used with NFS, set to NULL
 		buf[offset + 4] = 0;					// Length of verifier header = 0
-		return 60 + length;
+		return 60 + length + fillBytes;
 	}
 }
 

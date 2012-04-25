@@ -134,8 +134,6 @@ void nfsUnmount(const char *name)
 		return;
 	}
 
-	if (RemoveDevice(name) == -1) return;
-
 	nfsmount = (NFSMOUNT*)devops->deviceData;
 	rpc_unmount(nfsmount);
 
@@ -146,4 +144,6 @@ void nfsUnmount(const char *name)
 
 	_NFS_mem_free(nfsmount);
 	_NFS_mem_free(devops);
+
+	RemoveDevice(name);
 }
