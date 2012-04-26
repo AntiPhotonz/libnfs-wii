@@ -38,7 +38,7 @@ static inline void* _NFS_mem_allocate (size_t size) {
 }
 
 static inline void* _NFS_mem_align (size_t size) {
-	return memalign(size, 32);
+	return memalign(32, size);
 }
 
 static inline void * _NFS_mem_reallocate(void *mem, size_t size) {

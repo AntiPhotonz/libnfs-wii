@@ -107,8 +107,8 @@ int32_t _NFS_get_handle(struct _reent *r, NFSMOUNT *nfsmount, const char *path, 
 	// Allocate a new string, since we'll use strtok (and strtok changes strings)
 	int32_t str = pathEnd != NULL ? pathEnd - path + 1 : strlen(path) + 1;
 	char *input = (char *) _NFS_mem_allocate(str);
-	memset(input, 0, sizeof(input));
-	strncpy(input, path, str);
+	strncpy(input, path, str - 1);
+	input[str-1] = 0;
 	char *dir = strtok(input, "/");
 
 	struct stat obj_attr = {0};

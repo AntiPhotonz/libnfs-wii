@@ -97,7 +97,8 @@ bool nfsMountEx(const char *name, const char *ipAddress, const char *mountdir, u
 
 	nfsmount->uid = uid;
 	nfsmount->gid = gid;
-	nfsmount->readonly = readonly;
+// Disabled because of something that looks like a libogc issue?
+	nfsmount->readonly = 0; // readonly;
 
 	udp_init(nfsmount, ipAddress, _nfs_clientport++);
 
