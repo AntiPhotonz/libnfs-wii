@@ -83,7 +83,7 @@ int32_t _NFS_open_r (struct _reent *r, void *fileStruct, const char *path, int32
 	}
 
 	// Check if we are doing a Write on readonly partition
-	if (((mode & O_WRONLY) || (mode & O_RDWR)) && nfsmount->readonly) {
+	if (((flags & O_WRONLY) || (flags & O_RDWR)) && nfsmount->readonly) {
 		r->_errno = EROFS;
 		return -1;
 	}
