@@ -38,13 +38,12 @@ uint16_t portmap_find_port(NFSMOUNT *nfsmount, uint16_t *port, u32 program)
 {
 	int headerSize = rpc_create_header(nfsmount, PROGRAM_PORTMAP, 2, PROCEDURE_GETPORT, AUTH_NULL);
 
-	uint32_t *buf = (uint32_t *) (nfsmount->buffer + headerSize);
-	buf[0] = program;
-	buf[1] = 3;
-	buf[2] = PROTO_UDP;
-	buf[3] = 0;
+	headerSize += rpc_write_int(nfsmount, headerSize, program);	// Write the program
+	headerSize += rpc_write_int(nfsmount, headerSize, 3);		// Write the portmap version
+	headerSize += rpc_write_int(nfsmount, headerSize, PROTO_UDP);	// Write the protocol
+	headerSize += 4;						// Write a 0 value
 
-	int32_t ret = udp_sendrecv(nfsmount, headerSize + 16, _nfs_portmapper_port); // Portmapper listens on port 111
+	int32_t ret = udp_sendrecv(nfsmount, headerSize, _nfs_portmapper_port); // Portmapper listens on port 111
 	if (ret < 0)
 	{
 		return -1;
