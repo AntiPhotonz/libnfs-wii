@@ -95,7 +95,7 @@ int32_t _NFS_get_handle(struct _reent *r, NFSMOUNT *nfsmount, const char *path, 
 		path = path + 1;
 
 	// Are we requesting the root directory? We already have that handle
-	if (strlen(path) == 0) {
+	if (strlen(path) == 0 || (pathEnd != NULL && pathEnd - path == (pathEnd[0] == '/' ? 1 : 0))) { 
 		fhandle3_copy(handle, &nfsmount->handle);
 		return 0;
 	}
@@ -107,6 +107,10 @@ int32_t _NFS_get_handle(struct _reent *r, NFSMOUNT *nfsmount, const char *path, 
 	// Allocate a new string, since we'll use strtok (and strtok changes strings)
 	int32_t str = pathEnd != NULL ? pathEnd - path + 1 : strlen(path) + 1;
 	char *input = (char *) _NFS_mem_allocate(str);
+	if (input == NULL) {
+		r->_errno = ENOMEM;
+		return -1;
+	}
 	strncpy(input, path, str - 1);
 	input[str-1] = 0;
 	char *dir = strtok(input, "/");
@@ -164,7 +168,7 @@ DIR_ITER * _NFS_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path
 
 	_NFS_unlock(&state->nfsmount->lock);
 
-	return dirState;
+	return r->_errno == 0 ? dirState : NULL;
 }
 
 int32_t _NFS_dirclose_r(struct _reent *r, DIR_ITER *dirState)
@@ -303,6 +307,10 @@ int32_t _NFS_readdirplus_single(NFSMOUNT *nfsmount, NFS_DIR_STATE_STRUCT *state)
 				if (memcmp(&state->handle, &child.handle, state->handle.len + 4) == 0) {
 					continue; // This handle is the same as the parents handle, ignore it
 				}
+			}
+			else if (( (*(u32*)child.name & 0xffffff00)  == 0x2e2e0000 ) )// this filters the ".." from the directory root
+			{
+				continue;
 			}
 
 
