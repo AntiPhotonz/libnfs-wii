@@ -43,22 +43,17 @@ int32_t rpc_create_header(NFSMOUNT *nfsmount, int32_t program, int32_t program_v
 
 	uint32_t *buf = (u32 *) nfsmount->buffer;
 	memset(nfsmount->buffer, 0, nfsmount->bufferlen);
-	buf[0] = ++nfsmount->xid;		// Transmission Id
-	buf[1] = TYPE_CALL;			// Message type (always call)
-	buf[2] = 2;				// RPC Version (make it 2)
-	buf[3] = program;			// Program to be called
-	buf[4] = program_version;		// Programversion to be called
-	buf[5] = procedure;			// Procedure to execute on external program
-	buf[6] = auth;				// Authentication type
+	u32 offset = rpc_write_int(nfsmount, 0, ++nfsmount->xid); 	// Tranmission Id
+	offset += rpc_write_int(nfsmount, offset, TYPE_CALL);		// Message type (CALL)	 
+	offset += rpc_write_int(nfsmount, offset, 2);			// RPC Version
+	offset += rpc_write_int(nfsmount, offset, program);		// Program to be called
+	offset += rpc_write_int(nfsmount, offset, program_version);	// Program version
+	offset += rpc_write_int(nfsmount, offset, procedure);		// Procedure
+	offset += rpc_write_int(nfsmount, offset, auth);		// Authentication type
 
 	if (auth == AUTH_NULL)
 	{
-		// Leave this for comments only
-		buf[7] = 0;			// Length of auth header = 0
-		buf[8] = 0;			// Verifier is not used with NFS, set to NULL
-		buf[9] = 0;			// Length of verifier header = 0
-
-		return 40; // Size is 40 bytes, 10 entries of 4 bytes
+		return offset + 12;	// 12 bytes extra, for length of auth header, verifier, and length of verifier
 	}
 	else
 	{
@@ -73,22 +68,16 @@ int32_t rpc_create_header(NFSMOUNT *nfsmount, int32_t program, int32_t program_v
 		
 		uint32_t length = strlen(ipAddr);
 
-		buf[8] = tv.tv_sec;						// Timestamp
-		buf[9] = length;						// Length of the machine name 
-		strncpy((char *) &buf[10], ipAddr, length); // The machine name
-		
-		unsigned char fillBytes = length % 4 == 0 ? 0 : 4 - (length % 4); // Align the name length to 4 bytes
-
-		int32_t offset = ((length + fillBytes) / sizeof(u32)) + 10;
-		buf[offset] = nfsmount->uid;				// UID
-		buf[offset + 1] = nfsmount->gid;			// GID
-		buf[offset + 2] = 0;					// Amount of GIDS in the gidlist, followed by (optionally) the gids themselves
-		buf[7] = 8 + length + fillBytes + 12;	// Length of the authentication header
-
-		// Buffers for Verifier can be empty, buffer is filled until 9 + length + fillBytes + 12, plus UID, GID and GIDlist
-		buf[offset + 3] = 0;					// Verifier is not used with NFS, set to NULL
-		buf[offset + 4] = 0;					// Length of verifier header = 0
-		return 60 + length + fillBytes;
+		u32 auth_length_offset = offset;
+		offset += 4; 	// Write auth header length when we know it
+		offset += rpc_write_int(nfsmount, offset, tv.tv_sec);		// Timestamp	
+		offset += rpc_write_string(nfsmount, offset, ipAddr);		// Write machine name
+		offset += rpc_write_int(nfsmount, offset, nfsmount->uid);	// Write UID
+		offset += rpc_write_int(nfsmount, offset, nfsmount->gid);	// Write GID
+		offset += 4;							// Additional GIDs (unsupported atm)
+		rpc_write_int(nfsmount, auth_length_offset, offset - (auth_length_offset + 4));	// Write auth header length
+		offset += 8;							// Verifier header
+		return offset;
 	}
 }
 
@@ -120,8 +109,7 @@ int32_t rpc_write_string(NFSMOUNT *nfsmount, int32_t offset, const char *str)
 	int32_t len = strlen(str);
 	*(uint32_t *) (nfsmount->buffer + offset) = len;
 	strncpy((char *) (nfsmount->buffer + offset + 4), str, len);
-	if (len % 4 != 0) len += (4 - (len % 4)); // Fill the text up to 4 bytes
-	return len + 4;
+	return ((len + 3) & ~3) + 4; // Round length to 4 bytes, and add 4 bytes for the length
 }
 
 int32_t rpc_write_fhandle(NFSMOUNT *nfsmount, int32_t offset, fhandle3 *handle)
